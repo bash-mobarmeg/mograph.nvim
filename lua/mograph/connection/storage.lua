@@ -15,6 +15,9 @@ local function json_decode(str)
 end
 
 function M.path(config, root)
+  if config.storage.mode == "global" then
+    return vim.fn.expand(config.storage.global_path)
+  end
   return root .. "/" .. config.data_dir .. "/" .. config.data_file
 end
 
@@ -50,12 +53,12 @@ end
 --- Persist the connection graph to disk, creating the data directory if
 --- necessary.
 function M.save(config, root, data)
-  local dir = root .. "/" .. config.data_dir
+  local path = M.path(config, root)
+  local dir = vim.fn.fnamemodify(path, ":h")
   if vim.fn.isdirectory(dir) == 0 then
     vim.fn.mkdir(dir, "p")
   end
 
-  local path = M.path(config, root)
   local ok, encoded = pcall(json_encode, data)
   if not ok then
     vim.notify("mograph: failed to encode connection data", vim.log.levels.ERROR)

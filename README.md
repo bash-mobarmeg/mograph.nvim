@@ -1,30 +1,36 @@
 # mograph.nvim
 
 Connect exact lines of code across multiple files and projects using named
-connections. Built for multi-project workspaces (e.g. an API server, a
-mobile app, and an admin dashboard living side by side) where the same
-logical feature is scattered across files that don't otherwise reference
-each other.
+connections — even across separate repos and separate Neovim sessions. Built
+for setups like an API server, a mobile app, and an admin dashboard living in
+their own repos, where the same logical feature is scattered across files
+that don't otherwise reference each other.
 
 ```text
 create-post-api
-├── server/src/routes/posts.ts:42
-├── mobile/src/api/posts.ts:18
-└── admin/src/api/posts.ts:24
+├── server/src/routes/posts.ts:42       (repo: server, .git)
+├── mobile/src/api/posts.ts:18          (repo: mobile, .git)
+└── admin/src/api/posts.ts:24           (repo: admin, .git)
 ```
 
 ## Features
 
 - Line-level connections, not file-level — one line can belong to many
   connections, one connection can span many files.
-- Visual sign-column markers (`●` single connection, `◆` multiple) with no
+- **Global by default**: one shared connection graph for your whole system,
+  independent of which folder or Neovim session you're in. Open Neovim in
+  `~/code/server`, create a connection; open a separate Neovim in
+  `~/code/dashboard` later, and add a line there to the same connection —
+  no shared parent folder or `.git` required. See
+  [Storage modes](#storage-modes) below.
+- Visual sign-column markers (`→` single connection, `⇉` multiple) with no
   modification to your source files.
 - Locations survive line moves/edits: they're tracked live via extmarks in
   loaded buffers, and relocated on load via stored line/text/symbol context.
 - Native floating-window UI — no required dependencies beyond Neovim itself.
-- Cross-file `next`/`previous` navigation through every connection in the
-  workspace.
-- JSON persistence in `.mograph/connections.json` at the workspace root.
+- Cross-file `next`/`previous` navigation through every connection, across
+  every project.
+- JSON persistence, either in one global file or per-project (configurable).
 
 ## Installation
 
@@ -71,6 +77,62 @@ use({
 
 Inside any mograph list/tree window: `<CR>` selects, `q` or `<Esc>` closes.
 
+## Storage modes
+
+mograph supports two storage modes, set via `storage.mode`:
+
+### `"global"` (default)
+
+One connection graph for your entire system, stored at `storage.global_path`
+(defaults to `vim.fn.stdpath("data") .. "/mograph/connections.json"`, e.g.
+`~/.local/share/nvim/mograph/connections.json`). Locations are stored as
+**absolute file paths**. Because the graph lives at a fixed location instead
+of inside any one repo, it doesn't matter which directory you launched
+Neovim from, or whether the two files you're connecting belong to the same
+repo, different repos, or no repo at all — this is what makes connections
+like `server/src/routes/posts.ts` (repo A) ↔ `dashboard/src/api/posts.ts`
+(repo B) work out of the box, from two entirely separate Neovim sessions.
+
+```lua
+require("mograph").setup({
+  storage = {
+    mode = "global",
+    global_path = vim.fn.stdpath("data") .. "/mograph/connections.json",
+  },
+})
+```
+
+Trade-offs: the file isn't scoped to a repo, so it won't get committed or
+shared via git automatically, and if two Neovim instances save at the same
+moment it's last-write-wins.
+
+### `"workspace"` (legacy / opt-in)
+
+One connection graph per detected workspace root — the nearest ancestor
+directory containing a `.git` or `.mograph` marker (configurable via
+`workspace_markers`), searched upward from Neovim's cwd. The graph is stored
+at `<root>/<data_dir>/<data_file>` with locations stored **relative to that
+root**. Use this if you keep all your related projects as subdirectories of
+one parent repo/folder and want the connection graph to travel with it
+(e.g. commit `.mograph/connections.json` alongside the code).
+
+```lua
+require("mograph").setup({
+  storage = { mode = "workspace" },
+  data_dir = ".mograph",
+  data_file = "connections.json",
+  workspace_markers = { ".mograph", ".git" },
+})
+```
+
+Note: in workspace mode, two files can only be connected if Neovim resolves
+them to the *same* workspace root — so this mode still won't bridge two
+independently-`.git`-tracked repos unless you point `workspace_markers` at a
+shared parent marker (e.g. a `.mograph` file placed at the top of a
+monorepo-style folder that contains both repos as subdirectories) or set
+`workspace_markers` to something Neovim will only find at that shared
+parent.
+
 ## Commands
 
 | Command                 | Description                                   |
@@ -110,17 +172,21 @@ vim.keymap.set("n", "<leader>xx", require("mograph").create_connection)
 
 ```lua
 require("mograph").setup({
+  storage = {
+    mode = "global", -- "global" (default) or "workspace" — see Storage modes above
+    global_path = vim.fn.stdpath("data") .. "/mograph/connections.json",
+  },
+
+  -- Only used when storage.mode == "workspace":
   data_dir = ".mograph",
   data_file = "connections.json",
-
-  -- Files/directories that mark the workspace root, searched upward from cwd.
   workspace_markers = { ".mograph", ".git" },
 
   signs = {
     enabled = true,
-    single = "●",
-    multiple = "◆",
-    unresolved = "⚠",
+    single = "→",
+    multiple = "⇉",
+    unresolved = "⨯",
     sign_hl = "DiagnosticInfo",
     sign_hl_multi = "DiagnosticWarn",
     sign_hl_unresolved = "DiagnosticError",
@@ -157,12 +223,12 @@ location, mograph tries, in order:
 4. A search for the stored symbol name.
 
 If none of these succeed, the location is marked unresolved (shown with
-`⚠` and "location not found") rather than silently dropped — you can still
+`⨯` and "location not found") rather than silently dropped — you can still
 see it in `:MoGraph`/`<leader>ml` and remove it manually if it's stale.
 
 ## Data format
 
-`.mograph/connections.json`:
+`~/.local/share/nvim/mograph/connections.json` (global mode, default):
 
 ```json
 {
@@ -172,9 +238,16 @@ see it in `:MoGraph`/`<leader>ml` and remove it manually if it's stale.
       "locations": [
         {
           "id": "...",
-          "file": "server/src/routes/posts.ts",
+          "file": "/home/you/code/server/src/routes/posts.ts",
           "line": 42,
           "text": "router.post('/posts', createPost)",
+          "symbol": "createPost"
+        },
+        {
+          "id": "...",
+          "file": "/home/you/code/dashboard/src/api/posts.ts",
+          "line": 24,
+          "text": "export const createPost = ...",
           "symbol": "createPost"
         }
       ]
@@ -183,7 +256,10 @@ see it in `:MoGraph`/`<leader>ml` and remove it manually if it's stale.
 }
 ```
 
-Paths are stored relative to the detected workspace root.
+In global mode, `file` is an absolute path, so locations from any project
+anywhere on disk can share a connection. In workspace mode, `file` is stored
+relative to the detected workspace root instead (see
+[Storage modes](#storage-modes)).
 
 ## Non-goals (for now)
 

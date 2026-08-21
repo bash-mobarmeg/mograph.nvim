@@ -13,12 +13,34 @@ M.state = {
 
 function M.setup(config)
   M.state.config = config
-  M.state.root = utils.find_workspace_root(config.workspace_markers)
+  if config.storage.mode == "workspace" then
+    M.state.root = utils.find_workspace_root(config.workspace_markers)
+  else
+    M.state.root = nil
+  end
   M.state.data = storage.load(config, M.state.root)
 end
 
 function M.root()
   return M.state.root
+end
+
+--- Convert an absolute file path into the form used for storage: an
+--- absolute path in "global" mode, or a path relative to the workspace
+--- root in "workspace" mode.
+function M.to_storage_path(abs_path)
+  if M.state.config.storage.mode == "global" then
+    return vim.fn.fnamemodify(abs_path, ":p")
+  end
+  return utils.to_relative(abs_path, M.state.root)
+end
+
+--- Convert a stored path back into an absolute path.
+function M.to_absolute_path(stored_path)
+  if M.state.config.storage.mode == "global" then
+    return stored_path
+  end
+  return utils.to_absolute(stored_path, M.state.root)
 end
 
 local function save()
@@ -57,7 +79,7 @@ function M.create_connection(name, bufnr)
   end
 
   local conn = M.state.data.connections[name]
-  local location = model.new_location(bufnr, M.state.root)
+  local location = model.new_location(bufnr, M.to_storage_path)
 
   for _, existing in ipairs(conn.locations) do
     if model.same_place(existing, location) then
@@ -81,7 +103,7 @@ function M.add_location(name, bufnr)
     return nil, "connection '" .. name .. "' does not exist"
   end
 
-  local location = model.new_location(bufnr, M.state.root)
+  local location = model.new_location(bufnr, M.to_storage_path)
 
   for _, existing in ipairs(conn.locations) do
     if model.same_place(existing, location) then
@@ -132,7 +154,7 @@ end
 --- line (or nil if unresolved), a status string, and the buffer number
 --- used to resolve it.
 function M.resolve_location(location)
-  local abs = utils.to_absolute(location.file, M.state.root)
+  local abs = M.to_absolute_path(location.file)
   local bufnr = vim.fn.bufnr(abs)
 
   if bufnr == -1 or not vim.api.nvim_buf_is_loaded(bufnr) then
@@ -151,12 +173,12 @@ end
 --- given buffer+line (the "current" line).
 function M.get_connections_at(bufnr, line)
   local abs = vim.api.nvim_buf_get_name(bufnr)
-  local rel = utils.to_relative(abs, M.state.root)
+  local key = M.to_storage_path(abs)
 
   local results = {}
   for name, conn in pairs(M.state.data.connections) do
     for _, loc in ipairs(conn.locations) do
-      if loc.file == rel then
+      if loc.file == key then
         local resolved_line = resolver.resolve(bufnr, loc)
         if resolved_line == line then
           table.insert(results, { connection = name, location = loc })
@@ -179,12 +201,12 @@ function M.get_line_map_for_buffer(bufnr)
   if abs == "" then
     return {}
   end
-  local rel = utils.to_relative(abs, M.state.root)
+  local key = M.to_storage_path(abs)
 
   local by_line = {}
   for name, conn in pairs(M.state.data.connections) do
     for _, loc in ipairs(conn.locations) do
-      if loc.file == rel then
+      if loc.file == key then
         local resolved_line = resolver.resolve(bufnr, loc)
         if resolved_line then
           by_line[resolved_line] = by_line[resolved_line] or {}

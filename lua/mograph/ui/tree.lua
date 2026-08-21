@@ -8,14 +8,14 @@ local function format_entry(loc, index, total, current_bufnr, current_line)
   local resolved_line = manager.resolve_location(loc)
 
   if not resolved_line then
-    return prefix .. string.format("⚠ %s  (location not found)", loc.file)
+    return prefix .. string.format("⨯ %s  (location not found)", loc.file)
   end
 
   local label = string.format("%s:%d", loc.file, resolved_line)
 
   if current_bufnr and current_line then
     local abs_current = vim.api.nvim_buf_get_name(current_bufnr)
-    local abs_loc = vim.fn.fnamemodify(manager.root() .. "/" .. loc.file, ":p")
+    local abs_loc = manager.to_absolute_path(loc.file)
     if abs_current == abs_loc and resolved_line == current_line then
       label = label .. "     ← current"
     end

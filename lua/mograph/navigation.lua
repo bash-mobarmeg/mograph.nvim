@@ -1,5 +1,4 @@
 local manager = require("mograph.connection.manager")
-local utils = require("mograph.utils")
 
 local M = {}
 
@@ -7,7 +6,7 @@ local M = {}
 function M.jump_to_location(location)
   local line = manager.resolve_location(location)
 
-  local abs = utils.to_absolute(location.file, manager.root())
+  local abs = manager.to_absolute_path(location.file)
   if vim.fn.filereadable(abs) == 0 then
     vim.notify("mograph: file not found: " .. location.file, vim.log.levels.ERROR)
     return
@@ -33,9 +32,9 @@ end
 local function current_position()
   local bufnr = vim.api.nvim_get_current_buf()
   local abs = vim.api.nvim_buf_get_name(bufnr)
-  local rel = utils.to_relative(abs, manager.root())
+  local key = manager.to_storage_path(abs)
   local line = vim.api.nvim_win_get_cursor(0)[1]
-  return rel, line
+  return key, line
 end
 
 --- Move to the next (or, if `backwards`, previous) connected location in
@@ -47,18 +46,18 @@ local function step(backwards)
     return
   end
 
-  local rel, line = current_position()
+  local key, line = current_position()
 
   local function is_after(entry)
-    if entry.location.file ~= rel then
-      return entry.location.file > rel
+    if entry.location.file ~= key then
+      return entry.location.file > key
     end
     return entry.location.line > line
   end
 
   local function is_before(entry)
-    if entry.location.file ~= rel then
-      return entry.location.file < rel
+    if entry.location.file ~= key then
+      return entry.location.file < key
     end
     return entry.location.line < line
   end
