@@ -18,13 +18,13 @@ M.defaults = {
 
   keymaps = {
     enabled = true,
-    create = "<leader>cc",
-    add = "<leader>ca",
-    list_current = "<leader>cl",
-    list_all = "<leader>cg",
-    remove = "<leader>cd",
-    next = "<leader>cn",
-    previous = "<leader>cp",
+    create = "<leader>mc",
+    add = "<leader>ma",
+    list_current = "<leader>ml",
+    list_all = "<leader>mg",
+    remove = "<leader>md",
+    next = "<leader>mn",
+    previous = "<leader>mp",
   },
 
   ui = {

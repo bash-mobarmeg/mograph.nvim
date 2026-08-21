@@ -52,18 +52,18 @@ use({
 
 ## Usage
 
-1. Put your cursor on a line and press `<leader>cc` (or run
+1. Put your cursor on a line and press `<leader>mc` (or run
    `:MoGraphCreate`). You'll be prompted for a connection name.
-2. Move to another file/line, press `<leader>ca` (`:MoGraphAdd`), and pick
+2. Move to another file/line, press `<leader>ma` (`:MoGraphAdd`), and pick
    the connection to add this line to.
-3. Press `<leader>cl` (`:MoGraphList`) on any connected line to see every
+3. Press `<leader>ml` (`:MoGraphList`) on any connected line to see every
    connection — and every location within it — that passes through that
    line. Select an entry to jump there.
-4. Press `<leader>cg` (`:MoGraph` / `:MoGraphConnections`) to browse every
+4. Press `<leader>mg` (`:MoGraph` / `:MoGraphConnections`) to browse every
    connection in the workspace.
-5. Press `<leader>cn` / `<leader>cp` (`:MoGraphNext` / `:MoGraphPrevious`)
+5. Press `<leader>mn` / `<leader>mp` (`:MoGraphNext` / `:MoGraphPrevious`)
    to step through every connected location across the whole workspace.
-6. Press `<leader>cd` (`:MoGraphRemove`) to remove the current line from a
+6. Press `<leader>md` (`:MoGraphRemove`) to remove the current line from a
    connection (prompts if the line belongs to more than one), or use
    `:MoGraphDelete` to delete an entire connection.
 
@@ -89,13 +89,13 @@ Inside any mograph list/tree window: `<CR>` selects, `q` or `<Esc>` closes.
 
 ```lua
 {
-  create       = "<leader>cc",
-  add          = "<leader>ca",
-  list_current = "<leader>cl",
-  list_all     = "<leader>cg",
-  remove       = "<leader>cd",
-  next         = "<leader>cn",
-  previous     = "<leader>cp",
+  create       = "<leader>mc",
+  add          = "<leader>ma",
+  list_current = "<leader>ml",
+  list_all     = "<leader>mg",
+  remove       = "<leader>md",
+  next         = "<leader>mn",
+  previous     = "<leader>mp",
 }
 ```
 
@@ -128,13 +128,13 @@ require("mograph").setup({
 
   keymaps = {
     enabled = true,
-    create = "<leader>cc",
-    add = "<leader>ca",
-    list_current = "<leader>cl",
-    list_all = "<leader>cg",
-    remove = "<leader>cd",
-    next = "<leader>cn",
-    previous = "<leader>cp",
+    create = "<leader>mc",
+    add = "<leader>ma",
+    list_current = "<leader>ml",
+    list_all = "<leader>mg",
+    remove = "<leader>md",
+    next = "<leader>mn",
+    previous = "<leader>mp",
   },
 
   ui = {
@@ -158,7 +158,7 @@ location, mograph tries, in order:
 
 If none of these succeed, the location is marked unresolved (shown with
 `⚠` and "location not found") rather than silently dropped — you can still
-see it in `:MoGraph`/`<leader>cl` and remove it manually if it's stale.
+see it in `:MoGraph`/`<leader>ml` and remove it manually if it's stale.
 
 ## Data format
 
